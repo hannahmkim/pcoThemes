@@ -3,11 +3,16 @@ import requests
 from requests.auth import HTTPBasicAuth
 import json
 
-# songs.csv - spreadsheet with songs & themes
+# themes.csv is spreadsheet with songs mapped to relevant themes
+# Format of one line in themes is 
+# song[1]	song[2]		song[3]		song[4]		song[5]		song[6-8]
+# ID 		TITLE 		Genre 		Mood 		Purpose		Theme(s)
 allSongs = pd.read_csv('themes.csv')
 
-head = {"Authorization":"Basic MmVhYTc2NTVkYzExZDFjNzFhODI5NmQ2ODkyMmE0MTAwOTkxZDQ2NmNjYzM1ZmJhOWZjOGMxZWQyZDI5MWUxZjphMmZhZWEyNDc1MmZhMTRjYzEzM2UzNjRlMmFjM2IzMzEyYmI5OWEzYWY0ZTEyNTEzODg2NzJjZTQ4ZTNlZmYy"}
+# Authorization for our API endpoint (deleted for privacy)
+head = {"Authorization":"InsertAuthorizationKeyHERE!"}
 
+# Mapping of themes to themeID as specified in our API endpoint
 tagID = {
 	"Children": "6904402",
 	"Contemporary": "6904403",
@@ -42,6 +47,7 @@ tagID = {
 	"Trust": "6904464"
 }
 
+# This segment takes the information in themes.csv and sends it to our API endpoint to auto-input tags for each song in database.
 for song in allSongs.itertuples():
 	# ID number of song
 	ID = int(song[1])
@@ -59,6 +65,7 @@ for song in allSongs.itertuples():
 				}
 			)
 
+	# request body
 	request = """ 
 		{{
 		    "data": {{
@@ -80,3 +87,5 @@ for song in allSongs.itertuples():
 
 	# # check for success!
 	print r.status_code, r.reason
+
+# The end result is that our Planning Center databse is updated with the tags and songs are easily filterable by tag
