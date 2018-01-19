@@ -1,16 +1,21 @@
+# updatePCO.py
+# updates songs in PCO db with relevant tags. 
+# in: themes.csv
+	# themes.csv is spreadsheet with songs mapped to relevant themes
+	# Format of one line in themes is 
+	# song[1]	song[2]		song[3]		song[4]		song[5]		song[6-8]
+	# ID 		TITLE 		Genre 		Mood 		Purpose		Theme(s)
+# out: nothing
+
 import pandas as pd
 import requests
 from requests.auth import HTTPBasicAuth
 import json
 
-# themes.csv is spreadsheet with songs mapped to relevant themes
-# Format of one line in themes is 
-# song[1]	song[2]		song[3]		song[4]		song[5]		song[6-8]
-# ID 		TITLE 		Genre 		Mood 		Purpose		Theme(s)
 allSongs = pd.read_csv('themes.csv')
 
 # Authorization for our API endpoint (deleted for privacy)
-head = {"Authorization":"InsertAuthorizationKeyHERE!"}
+head = {"Authorization": "InsertAuthorizationKeyHERE!"}
 
 # Mapping of themes to themeID as specified in our API endpoint
 tagID = {

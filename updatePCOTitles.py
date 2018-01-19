@@ -1,3 +1,9 @@
+# updatePCOTitles.py
+# updates the titles of the songs in the PCO db. used bc we changed songs that started with "The ..." to be coded by the first significant word rather than "T"
+# 	ex) T00x - The Stand 	--> 	S00x - The Stand
+# in: update.csv (all the titles to update) 
+# out: nothing
+
 import pandas as pd
 import requests
 from requests.auth import HTTPBasicAuth
@@ -5,7 +11,7 @@ import json
 
 toUpdate = pd.read_csv('update.csv')
 
-head = {"Authorization":"Basic MmVhYTc2NTVkYzExZDFjNzFhODI5NmQ2ODkyMmE0MTAwOTkxZDQ2NmNjYzM1ZmJhOWZjOGMxZWQyZDI5MWUxZjphMmZhZWEyNDc1MmZhMTRjYzEzM2UzNjRlMmFjM2IzMzEyYmI5OWEzYWY0ZTEyNTEzODg2NzJjZTQ4ZTNlZmYy"}
+head = {"Authorization": "InsertAuthorizationKeyHERE!"}
 
 for song in toUpdate.itertuples():
 	ID = int(song[1])

@@ -1,66 +1,127 @@
+# genThemeSheet.py
+# generates xlsx file with all the songs in PCO db sorted by theme for use in Pastor's binder.
+# in: nothing
+# out: themeSheet.xlsx
+
 import requests
 import json
 import re
 import csv
-import pandas as pd
-import xlsxwriter
+import pandas as pd       # for V1 (exports csv)
+import xlsxwriter           # for V2 (exports formatted xlsx)
+import time
 
-# For each song in that set... ###########################################################################
-def getSongData(songsObj, allSongs, allTags, head):
-    for song in songsObj["data"]:
-        title = song["attributes"]["title"]
-        link = song["links"]["self"]
 
-        # Get all the info for that song...
+# Authorization for our API endpoint (deleted for privacy)
+head = {"Authorization": "InsertAuthorizationKeyHERE!"}
+
+allTags = {}
+allSongs = {}
+
+
+def getSongInfo(link):
+    songReq = requests.get('{0}/arrangements'.format(link), headers=head)
+    songObj = json.loads(songReq.text)
+    if 'errors' in songObj:
+        time.sleep(20)
         songReq = requests.get('{0}/arrangements'.format(link), headers=head)
         songObj = json.loads(songReq.text)
 
-        allSongs[title] = {}
+    return songObj
 
-        # Get first line...
-        try: 
-            firstLine = songObj["data"][0]["attributes"]["chord_chart"]
-            firstLine = firstLine.splitlines()[1]
-            firstLine = re.sub('(\\[.*?\\])', '', firstLine)
-        except:
-            firstLine = "sorry, you have to manually get first line... idk why"
-        allSongs[title]["firstLine"] = firstLine
 
-        # And BPM...
-        try:
-            allSongs[title]["BPM"] = songObj["data"][0]["attributes"]["bpm"]
-        except: 
-            allSongs[title]["BPM"] = "sorry, you have to manually get bpm... idk why"
+def getFirstLine(songObj):
+    try:
+        firstLine = songObj["data"][0]["attributes"]["chord_chart"]
+        firstLine = firstLine.splitlines()[1]
+        firstLine = re.sub('(\\[.*?\\])', '', firstLine)
+    except:
+        firstLine = ""
+    return firstLine
 
-        # And all keys...
-        allSongs[title]["keys"] = []
-        for arr in songObj["data"]:
-            try:
-                key = arr["attributes"]["chord_chart_key"]
-            except:
-                key = "sorry, you have to manually get key... idk why"
-            allSongs[title]["keys"].append(key)
 
-        # Get all the tags for that song... 
+def getBPM(songObj):
+    BPM = songObj["data"][0]["attributes"]["bpm"]
+    return BPM
+
+
+def getKeys(songObj):
+    keyList = []
+    for arr in songObj["data"]:
+        key = arr["attributes"]["chord_chart_key"]
+        keyList.append(key)
+    return keyList
+
+
+def getTags(link):
+    tagsReq = requests.get('{0}/tags'.format(link), headers=head)
+    tagsObj = json.loads(tagsReq.text)
+    if 'errors' in tagsObj:
+        time.sleep(20)
         tagsReq = requests.get('{0}/tags'.format(link), headers=head)
         tagsObj = json.loads(tagsReq.text)
 
-        for songTag in tagsObj["data"]:
-            tag = songTag["attributes"]["name"]
+    return tagsObj
 
-            if tag not in allTags:
-                allTags[tag] = []
 
-            # And map that song to that theme!
-            allTags[tag].append(title)
+def updateAllTags(tagsObj, title):
+    for songTag in tagsObj["data"]:
+        tag = songTag["attributes"]["name"]
 
+        if tag not in allTags:
+            allTags[tag] = []
+
+        allTags[tag].append(title)
+
+
+def sortTags():
     for tag in allTags:
         allTags[tag].sort()
+
+
+# For each song in that set... ###########################################################################
+def getSongData(song):
+    title = song["attributes"]["title"]
+    link = song["links"]["self"]
+
+    allSongs[title] = {}
+
+    songObj = getSongInfo(link)
+
+    allSongs[title]["firstLine"] = getFirstLine(songObj)
+
+    allSongs[title]["BPM"] = getBPM(songObj)
+
+    allSongs[title]["keys"] = getKeys(songObj)
+
+    tagsObj = getTags(link)
+
+    updateAllTags(tagsObj, title)
 ###################################################################################################### 
+
+
+
+
+
+# Update the theme sheet (filename) with new songs
+def updateThemeSheet(filename):
+    return
+
+
+# Create a brand new theme sheet directly from PCO db
+def generateNewThemeSheet():
+    # Fetch songs
+    for x in range(0, 200, 100):
+        songsReq = requests.get('https://api.planningcenteronline.com/services/v2/songs/?per_page=100&offset={0}'.format(x), headers=head)
+        songsObj = json.loads(songsReq.text)
+
+        for song in songsObj["data"]:
+            getSongData(song)
+
 
 ##########################################################################################################
 # Version 1 generates a csv file using pandas
-def genCSV(allTags, allSongs):
+def genCSV():
     df = pd.DataFrame()
 
     for tag in allTags:
@@ -74,17 +135,18 @@ def genCSV(allTags, allSongs):
     df.to_csv(open('themeSheet.csv', 'wb'), sep='\t', encoding='utf-8')
 ##########################################################################################################
 
+
 ##########################################################################################################
 # Version 2 generates xls file using xlsxwriter
-def genXLS(allTags, allSongs, head):
+def genXLS():
 
     workbook = xlsxwriter.Workbook('themeSheet.xlsx')
     worksheets = {}
 
-    # stylessssss
-    sectionStyle = workbook.add_format({'bold': True, 'font_name': 'Avenir', 'bg_color': 'black', 'font_color': 'white', 'font_size': 10})
-    songCenterStyle = workbook.add_format({'bold': True, 'font_name': 'Avenir', 'bottom': 4, 'align': 'center', 'font_size': 10})
-    songStyle = workbook.add_format({'bold': True, 'font_name': 'Avenir', 'bottom': 4, 'font_size': 10})
+    # Style/formatting stuff
+    sectionStyle = workbook.add_format({'font_name': 'Avenir', 'bg_color': 'black', 'font_color': 'white', 'font_size': 10})
+    songCenterStyle = workbook.add_format({'font_name': 'Avenir', 'bottom': 4, 'align': 'center', 'font_size': 10})
+    songStyle = workbook.add_format({'font_name': 'Avenir', 'bottom': 4, 'font_size': 10})
 
     # getting tag groups
     # allTagGroups = { idOfTagGroup --> alphabetical list of ids of children tags }
@@ -104,47 +166,58 @@ def genXLS(allTags, allSongs, head):
             sorted(allTagGroups[tagGroup["attributes"]["name"]])
 
     for tagGroup in allTagGroups:
-        worksheet = worksheets[tagGroup]
+        worksheet = worksheets[tagGroup]    # creates new sheet for each tag group (genre, theme, purpose, mood)
         worksheet.hide_gridlines(2)
-        worksheet.set_column('A:A', 3)
-        worksheet.set_column('B:B', 40)
-        worksheet.set_column('C:C', 55)
-        worksheet.set_column('D:D', 7)
-        worksheet.set_column('E:E', 7)
+        worksheet.set_column('A:A', .55)
+        worksheet.set_column('B:B', 34)
+        worksheet.set_column('C:C', 46)
+        worksheet.set_column('D:D', 5)
+        worksheet.set_column('E:E', 5)
+        worksheet.set_column('F:F', .18)
+        worksheet.set_default_row(16)
 
         row = 0
-        try:
-            for tag in allTagGroups[tagGroup]:
-                worksheet.merge_range(row, 0, row, 4, tag, sectionStyle)
-                row += 1
+        for tag in allTagGroups[tagGroup]:
+            worksheet.merge_range(row, 0, row, 4, tag, sectionStyle)
+            row += 1
 
+            try:
                 for song in allTags[tag]:
+                    if row % 50 == 0:
+                        worksheet.merge_range(row, 0, row, 4, tag + ' (cont.)', sectionStyle)
+                        row += 1
+
                     worksheet.write(row, 1, song, songStyle)
                     worksheet.write(row, 2, allSongs[song]["firstLine"], songStyle)
                     worksheet.write(row, 3, allSongs[song]["BPM"], songCenterStyle)
                     # regex gets rid of unicode and random quotes and stuff
                     keys = re.sub('([\\[\\]\'u])', '', str(allSongs[song]["keys"]))
                     worksheet.write(row, 4, keys, songCenterStyle)
-                    row += 1    
-        except:
-            continue
+                    row += 1 
+            except:
+                continue
 
-        
+
 ##########################################################################################################
-
 def main():
-    head = {"Authorization":"Basic MmVhYTc2NTVkYzExZDFjNzFhODI5NmQ2ODkyMmE0MTAwOTkxZDQ2NmNjYzM1ZmJhOWZjOGMxZWQyZDI5MWUxZjphMmZhZWEyNDc1MmZhMTRjYzEzM2UzNjRlMmFjM2IzMzEyYmI5OWEzYWY0ZTEyNTEzODg2NzJjZTQ4ZTNlZmYy"}
 
-    allTags = {}
-    allSongs = {}
 
-    # Fetch songs
-    for x in range(0, 500, 100):
-        songsReq = requests.get('https://api.planningcenteronline.com/services/v2/songs/?per_page=100&offset={0}'.format(x), headers=head)
-        songsObj = json.loads(songsReq.text)
-        getSongData(songsObj, allSongs, allTags, head)
+    mode = raw_input("Type \'update\' to update theme sheet. Type \'new\' to generate a brand new theme sheet. (You will have to do a lot of manual work if you make a new one)\n")
+    outputType = raw_input("Type \'xls\' to generate a formatted xlsx file. Type \'csv\' to generate an ugly csv file.\n")
+    if (mode == 'update'):
+        filename = raw_input("Please type the filename of the old theme sheet\n")
+        updateThemeSheet(filename)
+    elif (mode == 'new'):    
+        print "Generating new theme sheet... "
+        generateNewThemeSheet()
+    else:
+        print 'Not a valid option'
+        exit(1)
 
-    # genCSV(allTags, allSongs)
-    genXLS(allTags, allSongs, head)
+
+    if outputType == 'csv':
+        genCSV()
+    else:
+        genXLS()
 
 main()

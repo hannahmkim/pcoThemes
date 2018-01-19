@@ -1,0 +1,7 @@
+*.csv
+*.xlsx
+
+.DS_Store
+genThemeSheet.sublime-workspace
+
+updatePCOTitles.py # used to update titles in PCO 
